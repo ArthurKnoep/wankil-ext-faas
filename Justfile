@@ -20,7 +20,7 @@ clean:
 deploy:
 	#!/bin/bash
 	aws cloudformation package --template-file template.yml --s3-bucket $(cat bucket-name.txt) --output-template-file out.yml
-	aws cloudformation deploy --template-file out.yml --stack-name wankil-ext-faas --capabilities CAPABILITY_NAMED_IAM
+	aws cloudformation deploy --template-file out.yml --stack-name wankil-ext-token-faas --capabilities CAPABILITY_NAMED_IAM
 
 do-it:
     @just build
