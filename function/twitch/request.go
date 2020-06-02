@@ -18,13 +18,23 @@ type (
 		ExpiresIn   uint   `json:"expires_in"`
 		TokenType   string `json:"token_type"`
 	}
+
+	Requester struct {
+		client http.Client
+		conf *config.Config
+	}
 )
 
-var httpClient = http.Client{
-	Timeout: 30 * time.Second,
+func NewRequester(conf *config.Config) *Requester {
+	return &Requester{
+		client: http.Client{
+			Timeout: 30 * time.Second,
+		},
+		conf: conf,
+	}
 }
 
-func GetToken(config *config.Config) (*TokenResp, error) {
+func (r *Requester) GetToken(config *config.Config) (*TokenResp, error) {
 	u, err := url.Parse("https://id.twitch.tv/oauth2/token")
 	if err != nil {
 		return nil, err
@@ -55,13 +65,13 @@ func GetToken(config *config.Config) (*TokenResp, error) {
 	return &t, nil
 }
 
-func GetStreams(streamerIds []string, conf *config.Config, token string) ([]Stream, error) {
+func (r *Requester) GetStreams(token string) ([]Stream, error) {
 	u, err := url.Parse("https://api.twitch.tv/helix/streams")
 	if err != nil {
 		return nil, err
 	}
 	q := u.Query()
-	for _, streamerId := range streamerIds {
+	for _, streamerId := range r.conf.StreamerIds {
 		q.Add("user_id", streamerId)
 	}
 	u.RawQuery = q.Encode()
@@ -70,8 +80,8 @@ func GetStreams(streamerIds []string, conf *config.Config, token string) ([]Stre
 		return nil, err
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Add("Client-ID", conf.ClientID)
-	resp, err := httpClient.Do(req)
+	req.Header.Add("Client-ID", r.conf.ClientID)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -87,4 +97,38 @@ func GetStreams(streamerIds []string, conf *config.Config, token string) ([]Stre
 		return nil, err
 	}
 	return streamsReq.Data, nil
+}
+
+func (r *Requester) GetGames(gameIds []string, token string) ([]Game, error) {
+	u, err := url.Parse("https://api.twitch.tv/helix/games")
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	for _, gameId := range gameIds {
+		q.Add("id", gameId)
+	}
+	u.RawQuery = q.Encode()
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Add("Client-ID", r.conf.ClientID)
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		return nil, errors.New("invalid response code from twitch api")
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var gamesReq GamesRequest
+	if err := json.Unmarshal(data, &gamesReq); err != nil {
+		return nil, err
+	}
+	return gamesReq.Data, nil
 }

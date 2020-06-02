@@ -43,7 +43,8 @@ func getTokenFromDB(ddb *dynamodb.DynamoDB) (*Token, error) {
 }
 
 func getTokenFromTwitch(conf *config.Config, ddb *dynamodb.DynamoDB) (*Token, error) {
-	resp, err := twitch.GetToken(conf)
+	twitchRequester := twitch.NewRequester(conf)
+	resp, err := twitchRequester.GetToken(conf)
 	if err != nil {
 		return nil, err
 	}
