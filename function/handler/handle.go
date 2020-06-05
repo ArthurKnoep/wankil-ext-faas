@@ -35,7 +35,9 @@ func findGame(games []twitch.Game, gameId string) twitch.Game {
 }
 
 func createStreamsObject(streams []twitch.Stream, games []twitch.Game) Streams {
-	var resp Streams
+	resp := Streams{
+		Streams: []Stream{},
+	}
 	for _, stream := range streams {
 		game := findGame(games, stream.GameId)
 		resp.Streams = append(resp.Streams, Stream{
